@@ -39,7 +39,7 @@ puis lance le serveur HTTP.`,
 		}
 
 		// TODO : Initialiser la connexion à la bBDD
-		db, err := gorm.Open(sqlite.Open(cfg.Database.Path), &gorm.Config{})
+		db, err := gorm.Open(sqlite.Open(cfg.Database.Name), &gorm.Config{})
 		if err != nil {
 			log.Fatalf("FATAL: Impossible d'ouvrir la base SQLite: %v", err)
 		}
@@ -48,39 +48,36 @@ puis lance le serveur HTTP.`,
 		linkRepo := repository.NewLinkRepository(db)
 		clickRepo := repository.NewClickRepository(db)
 
-		log.Println("Repositories initialisés.")
+	log.Println("Repositories initialisés.")
 
-		// Initialiser les services métiers
-		linkService := services.NewLinkService(linkRepo)
-		clickService := services.NewClickService(clickRepo)
+	// Initialiser les services métiers
+	linkService := services.NewLinkService(linkRepo)
 
-		log.Println("Services métiers initialisés.")
+	log.Println("Services métiers initialisés.")
 
-		// TODO : Initialiser le channel ClickEventsChannel + workers
-		clickChan := make(chan models.ClickEvent, cfg.Worker.BufferSize)
+	// TODO : Initialiser le channel ClickEventsChannel + workers
+	clickChan := make(chan models.ClickEvent, cfg.Analytics.BufferSize)
 
-		workers.StartClickWorkers(cfg.Worker.NumWorkers, clickChan, clickService)
+	workers.StartClickWorkers(cfg.Analytics.WorkerCount, clickChan, clickRepo)
 
-		log.Printf(
-			"Channel d'événements de clic initialisé avec un buffer de %d. %d worker(s) de clics démarré(s).",
-			cfg.Worker.BufferSize, cfg.Worker.NumWorkers,
-		)
+	log.Printf(
+		"Channel d'événements de clic initialisé avec un buffer de %d. %d worker(s) de clics démarré(s).",
+		cfg.Analytics.BufferSize, cfg.Analytics.WorkerCount,
+	)
 
-		// TODO : Initialiser et lancer le moniteur d'URLs
-		monitorInterval := time.Duration(cfg.Monitor.Interval) * time.Minute
-		urlMonitor := monitor.NewUrlMonitor(linkRepo, monitorInterval)
+	// TODO : Initialiser et lancer le moniteur d'URLs
+	monitorInterval := time.Duration(cfg.Monitor.IntervalMinutes) * time.Minute
+	urlMonitor := monitor.NewUrlMonitor(linkRepo, monitorInterval)
 
-		go urlMonitor.Start()
+	go urlMonitor.Start()
 
-		log.Printf("Moniteur d'URLs démarré avec un intervalle de %v.", monitorInterval)
+	log.Printf("Moniteur d'URLs démarré avec un intervalle de %v.", monitorInterval)
 
-		// TODO : Configurer le routeur Gin et les handlers API.
-		router := gin.Default()
-		api.ConfigureRoutes(router, linkService, clickChan)
+	// TODO : Configurer le routeur Gin et les handlers API.
+	router := gin.Default()
+	api.SetupRoutes(router, linkService)
 
-		log.Println("Routes API configurées.")
-
-		// Créer le serveur HTTP Gin
+	log.Println("Routes API configurées.")		// Créer le serveur HTTP Gin
 		serverAddr := fmt.Sprintf(":%d", cfg.Server.Port)
 		srv := &http.Server{
 			Addr:    serverAddr,

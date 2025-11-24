@@ -43,7 +43,7 @@ Exemple:
 		}
 
 		// TODO : Initialiser la connexion à la BDD.
-		db, err := gorm.Open(sqlite.Open(cfg.Database.Path), &gorm.Config{})
+		db, err := gorm.Open(sqlite.Open(cfg.Database.Name), &gorm.Config{})
 		if err != nil {
 			log.Fatalf("ERREUR : Impossible d'ouvrir la base SQLite: %v", err)
 		}
