@@ -1,103 +1,44 @@
-# TP Go Final : URL Shortener
+# URL Shortener - Service de Raccourcissement d'URLs
 
-## Objectif du Projet
-Ce TP vous met au défi de construire un service web performant de raccourcissement et de gestion d'URLs en Go. Votre application permettra de transformer une URL longue en une URL courte et unique. Chaque fois qu'une URL courte est visitée, le système redirigera instantanément l'utilisateur vers l'URL originale tout en enregistrant le clic de manière asynchrone, pour ne jamais ralentir la redirection.
+## 🎯 Description
 
-Le service inclura également un moniteur pour vérifier périodiquement la disponibilité des URLs longues et notifier tout changement d'état. L'interaction se fera via une API RESTful et une interface en ligne de commande (CLI) complète.
+Service web performant de raccourcissement et de gestion d'URLs développé en Go. L'application permet de transformer une URL longue en une URL courte et unique, avec redirection instantanée et analytics asynchrones. Le système inclut également un moniteur pour vérifier périodiquement la disponibilité des URLs.
 
-## Connaissances Mobilisées
-Ce projet est une synthèse complète et pratique de tous les concepts abordés durant ce module de Go (normalement il n'y aura pas trop de surprise) :
+## ✨ Fonctionnalités
 
-* Syntaxe Go de base (structs, maps, boucles, conditions, etc.)
-* Concurrence (Goroutines, Channels) pour les tâches asynchrones et non-bloquantes
-* Interfaces CLI avec [Cobra](https://cobra.dev/)
-* Gestion des erreurs
-* Manipulation de données (JSON) pour les APIs
-* APIs RESTful avec le framework web [Gin](https://gin-gonic.com/)
-* Persistance des données avec l'ORM [GORM](https://gorm.io/) et SQLite
-* Gestion de configuration avec [Viper](https://github.com/spf13/viper)
-* Design patterns courants (Repository, Service) pour une architecture propre
+### API REST
+- ✅ **GET /health** : Vérification de l'état de santé du service
+- ✅ **POST /api/v1/links** : Création d'une nouvelle URL courte
+- ✅ **GET /{shortCode}** : Redirection vers l'URL originale (HTTP 302)
+- ✅ **GET /api/v1/links/{shortCode}/stats** : Statistiques d'un lien (nombre de clics)
 
+### Interface CLI
+- ✅ **create** : Création d'une URL courte depuis la ligne de commande
+- ✅ **stats** : Affichage des statistiques d'un lien
+- ✅ **migrate** : Exécution des migrations de base de données
+- ✅ **run-server** : Lancement du serveur API avec workers et moniteur
 
-## Fonctionnalités Attendues
-### Core Features (Obligatoires)
-1. **Raccourcissement d'URLs** :
-* Générer des codes courts uniques (6 caractères alphanumériques).
-* Gérer les collisions lors de la génération de codes via une logique de retry.
-2. **Redirection instantanée** :
-* Rediriger les utilisateurs vers l'URL originale sans latence (code HTTP 302).
-* Analytics asynchrones :
-* Enregistrer les détails de chaque clic en arrière-plan via des Goroutines et un Channel bufferisé. La redirection ne doit jamais être bloquée par l'enregistrement du clic.
-3. **Surveillance de l'état des URLs** :
-* Le service doit vérifier périodiquement (intervalle configurable via Viper) si les URLs longues sont toujours accessibles (réponse HTTP 200/3xx).
-* Si l'état d'une URL change (accessible leftrightarrow inaccessible), une fausse notification doit être générée dans les logs du serveur (ex: "[NOTIFICATION] L'URL ... est maintenant INACCESSIBLE.").
-4. **APIs REST (via Gin)** :
-* `GET /health` : Vérifie l'état de santé du service.
-* `POST /api/v1/links` : Crée une nouvelle URL courte (attend un JSON {"long_url": "..."}).
-* `GET /{shortCode}` : Gère la redirection et déclenche l'analytics asynchrone.
-* `GET /api/v1/links/{shortCode}/stats` : Récupère les statistiques d'un lien (nombre total de clics).
-5. **Interface CLI (via Cobra)** :
-* `./url-shortener run-server` : Lance le serveur API, les workers de clics et le moniteur d'URLs.
-* `./url-shortener create --url="https://..."` : Crée une URL courte depuis la ligne de commande.
-* `./url-shortener stats --code="xyz123"` : Affiche les statistiques d'un lien donné.
-* `./url-shortener migrate` : Exécute les migrations GORM pour la base de données.
-6. **Features Avancées (Bonus - si le temps le permet)**
-* URLs personnalisées : Permettre aux utilisateurs de proposer leur propre alias (ex: /mon-alias-perso).
-* Expiration des liens : Les URLs courtes peuvent avoir une durée de vie limitée.
-* Rate limiting : Protection simple par IP pour les créations de liens.
+### Caractéristiques Techniques
+- 🔄 **Analytics asynchrones** : Enregistrement des clics en arrière-plan sans bloquer la redirection
+- 📊 **Monitoring d'URLs** : Vérification périodique de la disponibilité des URLs
+- 🎲 **Génération de codes uniques** : Codes courts de 6 caractères alphanumériques
+- 💾 **Persistance SQLite** : Base de données légère avec GORM
+- ⚙️ **Configuration flexible** : Gestion via fichier YAML et Viper
 
+## 🚀 Installation et Démarrage
 
-## Architecture du Projet
-Le projet suit une structure modulaire classique pour les applications Go, qui sépare bien les différences préoccupations du projet :
-```
-url-shortener/
-├── cmd/
-│   ├── root.go             # Initialise la commande racine Cobra et ses sous-commandes
-│   ├── server/
-│   │   └── server.go       # Logique pour la commande 'run-server' (lance le serveur Gin, les workers de clics, le moniteur)
-│   └── cli/
-│       ├── create.go       # Logique pour la commande 'create' (crée un lien via CLI)
-│       ├── stats.go        # Logique pour la commande 'stats' (affiche les statistiques d'un lien via CLI)
-│       └── migrate.go      # Logique pour la commande 'migrate' (exécute les migrations GORM)
-├── internal/
-│   ├── api/
-│   │   └── handlers.go     # Fonctions de gestion des requêtes HTTP (handlers Gin pour les routes API)
-│   ├── models/
-│   │   ├── link.go         # Définition de la structure GORM 'Link'
-│   │   └── click.go        # Définition de la structure GORM 'Click'
-│   ├── services/
-│   │   ├── link_service.go # Logique métier pour les liens (ex: génération de code, validation)
-│   │   └── click_service.go # Logique métier pour les clics (optionnel, peut être directement dans le worker si simple)
-│   ├── workers/
-│   │   └── click_worker.go # Goroutine et logique pour l'enregistrement asynchrone des clics
-│   ├── monitor/
-│   │   └── url_monitor.go  # Logique pour la surveillance périodique de l'état des URLs
-│   ├── config/
-│   │   └── config.go       # Chargement et structure de la configuration de l'application (Viper)
-│   └── repository/
-│       ├── link_repository.go # Interface et implémentation GORM pour les opérations CRUD sur 'Link'
-│       └── click_repository.go # Interface et implémentation GORM pour les opérations CRUD sur 'Click'
-├── configs/
-│   └── config.yaml         # Fichier de configuration par défaut pour Viper
-├── go.mod                  # Fichier de module Go (liste des dépendances du projet)
-├── go.sum                  # Sommes de contrôle pour la sécurité des dépendances
-└── README.md               # Documentation du projet (installation, utilisation, etc.)
+### Prérequis
+- Go 1.24.3 ou supérieur
+- Git
 
-```
+### 1. Installation
 
-## Démarrage et Utilisation du Projet
-
-Suivez ces étapes pour mettre en place le projet et tester votre application (quand elle fonctionnera, évidemment).
-
-### 1. Préparation Initiale
-
-1. **Clonez le dépôt :**
 ```bash
+# Cloner le projet
 git clone https://github.com/axellelanca/urlshortener.git
-cd urlshortener # Naviguez vers le dossier du projet cloné
-```
+cd ProjetGo
 
-2. **Téléchargez et nettoyez les dépendances :**
+# Télécharger les dépendances
 
 ```bash
 go mod tidy
@@ -157,63 +98,279 @@ Note le Code (ex: XYZ123) et l'URL complète pour les étapes suivantes.
 2. Le navigateur devrait te rediriger instantanément vers l'URL longue originale. Dans le terminal où le serveur tourne (./url-shortener run-server), tu devrais voir des logs indiquant qu'un clic a été détecté et envoyé au worker asynchrone.
 
 #### 4.3. Consulter les Statistiques (via la CLI)
-Vérifie combien de fois ton URL courte a été visitée :
+go mod download
+go mod tidy
 
-1. Affiche les statistiques :
-```
-./url-shortener stats --code="XYZ123"
-```
-Le terminal affichera :
-```
-Statistiques pour le code court: XYZ123
-URL longue: [https://www.example.com/ma-super-url-de-test-pour-le-tp-go-final](https://www.example.com/ma-super-url-de-test-pour-le-tp-go-final)
-Total de clics: 1
-```
-(Le nombre de clics augmentera à chaque fois que tu accèderas à l'URL courte via ton navigateur).
-
-#### 4.4. Tester l'API de Santé (via curl)
-Vérifie si ton serveur est bien opérationnel :
-1. Exécute la commande curl :
-```
-curl http://localhost:8080/health
-```
-Tu devrais obtenir :
-``` 
-{"status":"ok"}
+# Compiler l'application
+go build -o url-shortener
 ```
 
-#### 4.5. Observer le Moniteur d'URLs
-Le moniteur fonctionne en arrière-plan et vérifie la disponibilité des URLs longues toutes les 5 minutes (par défaut).
+### 2. Configuration
 
-Observe les logs dans le terminal où run-server tourne. Si l'état d'une URL que tu as raccourcie change (par exemple, si le site devient inaccessible), tu verras un message [NOTIFICATION] similaire à :
+Le fichier de configuration se trouve dans `configs/config.yaml` :
+
+```yaml
+# Configuration du serveur
+server:
+  port: 8080
+  base_url: "http://localhost:8080"
+
+# Configuration de la base de données
+database:
+  name: "url_shortener.db"
+
+# Configuration des analytics
+analytics:
+  buffer_size: 1000
+  worker_count: 5
+
+# Configuration du moniteur
+monitor:
+  interval_minutes: 5
 ```
-[NOTIFICATION] Le lien XYZ123 ([https://url-hors-ligne.com](https://url-hors-ligne.com)) est passé de ACCESSIBLE à INACCESSIBLE !
+
+### 3. Initialiser la Base de Données
+
+```bash
+# Exécuter les migrations
+./url-shortener migrate
 ```
-(Pour tester cela, tu pourrais raccourcir une URL vers un site que tu sais hors ligne ou une adresse IP inexistante, et attendre l'intervalle de surveillance.)
 
-### 5. Arrêter le Serveur
+### 4. Lancer le Serveur
 
-Quand tu as terminé tes tests et que tu souhaites arrêter le service :
-1. Dans le terminal où ./url-shortener run-server tourne, appuie sur :
+```bash
+# Démarrer le serveur API avec workers et moniteur
+./url-shortener run-server
+```
+
+Le serveur démarre sur `http://localhost:8080`
+
+## 📖 Utilisation
+
+### Interface CLI
+
+#### Créer une URL courte
+
+```bash
+# Création d'une URL courte
+./url-shortener create --url="https://github.com/"
+
+# Exemple de sortie :
+# URL courte créée avec succès !
+# Code court: kwDkxi
+# URL complète: http://localhost:8080/kwDkxi
+```
+
+#### Consulter les statistiques
+
+```bash
+# Afficher les statistiques d'un lien
+./url-shortener stats --code="kwDkxi"
+
+# Exemple de sortie :
+# Statistiques pour le code court: kwDkxi
+# URL longue: https://github.com/
+# Total de clics: 15
+```
+
+### API REST
+
+#### 1. Vérifier l'état du service
+
+```bash
+curl --location 'http://localhost:8080/health'
+```
+
+**Réponse :**
+```json
+{
+  "status": "ok"
+}
+```
+
+#### 2. Créer une URL courte
+
+```bash
+curl --location 'http://localhost:8080/api/v1/links' \
+--header 'Content-Type: application/json' \
+--data '{"long_url":"https://www.google.com"}'
+```
+
+**Réponse :**
+```json
+{
+  "short_code": "6Zc1qP",
+  "short_url": "http://localhost:8080/6Zc1qP",
+  "long_url": "https://www.google.com"
+}
+```
+
+#### 3. Redirection vers l'URL originale
+
+```bash
+# Redirige automatiquement vers l'URL longue (HTTP 302)
+curl --location 'http://localhost:8080/6Zc1qP'
+```
+
+Ou ouvrez simplement `http://localhost:8080/6Zc1qP` dans votre navigateur.
+
+#### 4. Obtenir les statistiques d'un lien
+
+```bash
+curl --location 'http://localhost:8080/api/v1/links/6Zc1qP/stats'
+```
+
+**Réponse :**
+```json
+{
+  "short_code": "6Zc1qP",
+  "long_url": "https://www.google.com",
+  "total_clicks": 42,
+  "is_active": true
+}
+```
+
+## 🏗️ Architecture du Projet
+
+```
+ProjetGo/
+├── cmd/
+│   ├── root.go              # Commande racine Cobra
+│   ├── server/
+│   │   └── server.go        # Lancement du serveur, workers et moniteur
+│   └── cli/
+│       ├── create.go        # Création d'URL via CLI
+│       ├── stats.go         # Consultation des stats via CLI
+│       └── migrate.go       # Migrations de la base de données
+├── internal/
+│   ├── api/
+│   │   └── handlers.go      # Handlers HTTP (Gin)
+│   ├── models/
+│   │   ├── link.go          # Modèle GORM Link
+│   │   └── click.go         # Modèle GORM Click
+│   ├── services/
+│   │   ├── link_service.go  # Logique métier des liens
+│   │   └── click_service.go # Logique métier des clics
+│   ├── workers/
+│   │   └── click_worker.go  # Workers asynchrones pour analytics
+│   ├── monitor/
+│   │   └── url_monitor.go   # Monitoring périodique des URLs
+│   ├── config/
+│   │   └── config.go        # Configuration Viper
+│   └── repository/
+│       ├── link_repository.go  # Repository GORM pour Link
+│       └── click_repository.go # Repository GORM pour Click
+├── configs/
+│   └── config.yaml          # Configuration du projet
+├── go.mod
+├── go.sum
+└── README.md
+```
+
+## 🛠️ Technologies Utilisées
+
+- **[Go](https://go.dev/)** 1.24.3 - Langage de programmation
+- **[Gin](https://gin-gonic.com/)** - Framework web HTTP
+- **[GORM](https://gorm.io/)** - ORM pour Go
+- **[SQLite](https://www.sqlite.org/)** - Base de données embarquée
+- **[Cobra](https://cobra.dev/)** - CLI puissante
+- **[Viper](https://github.com/spf13/viper)** - Gestion de configuration
+
+## 🎯 Concepts Techniques
+
+### Analytics Asynchrones
+Les clics sont enregistrés en arrière-plan via :
+- **Goroutines** : Workers dédiés à l'enregistrement
+- **Channels bufferisés** : File d'attente des événements de clic
+- **Non-bloquant** : La redirection ne dépend pas de l'enregistrement
+
+### Monitoring d'URLs
+- Vérification périodique de la disponibilité des URLs (HTTP 200/3xx)
+- Notifications en cas de changement d'état (accessible ↔ inaccessible)
+- Intervalle configurable via `config.yaml`
+
+### Génération de Codes Courts
+- Codes uniques de 6 caractères alphanumériques
+- Gestion des collisions avec logique de retry
+- Stockage persistant en base SQLite
+
+## 📝 Exemples d'Utilisation Complets
+
+### Scénario 1 : Création et utilisation via API
+
+```bash
+# 1. Créer une URL courte
+curl --location 'http://localhost:8080/api/v1/links' \
+--header 'Content-Type: application/json' \
+--data '{"long_url":"https://www.google.com"}'
+
+# Réponse : {"short_code":"abc123",...}
+
+# 2. Utiliser l'URL courte (dans le navigateur ou via curl)
+curl --location 'http://localhost:8080/abc123'
+
+# 3. Consulter les stats
+curl --location 'http://localhost:8080/api/v1/links/abc123/stats'
+```
+
+### Scénario 2 : Création et consultation via CLI
+
+```bash
+# 1. Créer une URL
+./url-shortener create --url="https://github.com/"
+
+# 2. Tester dans le navigateur
+# Ouvrir : http://localhost:8080/kwDkxi
+
+# 3. Consulter les statistiques
+./url-shortener stats --code="kwDkxi"
+```
+
+## 🔧 Arrêt du Serveur
+
+Pour arrêter proprement le serveur :
 ```
 Ctrl + C
 ```
-Tu verras des logs confirmant l'arrêt propre du serveur.
 
-## Barème de Notation (/20)
+## 📚 Documentation Technique
 
-### 1. Robustesse Technique & Fonctionnelle (12 points)
-* 1 point : Le projet se lance via ./url-shortener run-server.
-* 4 points : Implémentation correcte de la redirection non-bloquante (GET /{shortCode}) avec utilisation efficace des goroutines et channels pour les analytics.
-* 2 points : Le moniteur d'URLs fonctionne correctement, vérifie les URLs périodiquement et génère des notifications logiques.
-* 3 points : Toutes les APIs REST et commandes CLI obligatoires (create, stats, migrate) sont fonctionnelles et robustes.
-* 2 points : Gestion des erreurs pertinentes.
-### 2. Qualité du Code & Documentation (2 points)
-* 2 points : Code propre, lisible, **bien commenté** et code respectant les conventions Go vu en cours, et README pertinent.
-* 2 points : Organisation des commits Git avec des messages clairs et pertinents.
-### 3. Entretien Technique (4 points)
-* 2 points : En Groupe :  Votre capacité à expliquer et à défendre votre code lors d'un entretien individuel/en groupe. Cela inclut la compréhension de l'architecture, l'explication du fonctionnement asynchrone (workers, moniteur), et votre capacité à répondre aux questions techniques sur votre code. Vous devrez être capables de naviguer dans votre projet et de justifier vos choix.
-* 2 points : Questions individuelles
-### 4. Points faciles
-* 1 point si votre code compile
-* 1 point si vous faites des erreurs personnalisées
+### Endpoints API Détaillés
+
+| Méthode | Endpoint | Description | Body/Params |
+|---------|----------|-------------|-------------|
+| GET | `/health` | Santé du service | - |
+| POST | `/api/v1/links` | Créer URL courte | `{"long_url": "..."}` |
+| GET | `/{shortCode}` | Redirection | - |
+| GET | `/api/v1/links/{shortCode}/stats` | Statistiques | - |
+
+### Commandes CLI Détaillées
+
+| Commande | Description | Options |
+|----------|-------------|---------|
+| `run-server` | Lance le serveur | - |
+| `create` | Crée une URL courte | `--url` (requis) |
+| `stats` | Affiche les stats | `--code` (requis) |
+| `migrate` | Migrations DB | - |
+
+## 👨‍💻 Développement
+
+### Structure des Commits
+- Messages clairs et descriptifs
+- Organisation logique des changements
+- Respect des conventions Git
+
+### Qualité du Code
+- Code commenté et documenté
+- Respect des conventions Go
+- Gestion d'erreurs pertinente
+- Architecture propre (Repository, Service patterns)
+
+## 📄 Licence
+
+Projet développé dans le cadre d'un TP Go Final.
+
+---
+
+**Auteur** : [axellelanca](https://github.com/axellelanca)  
+**Date** : 2025
