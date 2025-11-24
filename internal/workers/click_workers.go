@@ -26,7 +26,7 @@ func clickWorker(clickEventsChan <-chan models.ClickEvent, clickRepo repository.
 		click := models.Click{
 			LinkID:    event.LinkID,
 			Timestamp: event.Timestamp,
-			UserAgent: event.UserAgent,
+			UserAgent: eventgit.UserAgent,
 			IPAddress: event.IPAddress,
 		}
 		// TODO 2: Persister le clic en base de données via le 'clickRepo' (CreateClick).
