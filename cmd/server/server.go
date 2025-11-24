@@ -67,7 +67,7 @@ var RunServerCmd = &cobra.Command{
 
 		// Routes
 		router := gin.Default()
-		api.SetupRoutes(router, linkService)
+		api.SetupRoutes(router, linkService, clickChan)
 
 		log.Println("Routes API configurées.")
 

@@ -15,11 +15,9 @@ import (
 
 var ClickEventsChannel chan models.ClickEvent
 
-func SetupRoutes(router *gin.Engine, linkService *services.LinkService) {
-	if ClickEventsChannel == nil {
-		bufferSize := viper.GetInt("analytics.buffer_size")
-		ClickEventsChannel = make(chan models.ClickEvent, bufferSize)
-	}
+func SetupRoutes(router *gin.Engine, linkService *services.LinkService, clickChan chan models.ClickEvent) {
+	// Utiliser le channel passé en paramètre au lieu d'en créer un nouveau
+	ClickEventsChannel = clickChan
 
 	router.GET("/health", HealthCheckHandler)
 
